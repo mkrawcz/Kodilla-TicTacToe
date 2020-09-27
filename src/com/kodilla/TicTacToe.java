@@ -46,7 +46,7 @@ public class TicTacToe extends Application {
         //dodac 9 ImageView np. z X tak aby sie pokazaly i dostosowac board do tla
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
-                board.add(new ImageView(new Image("file:src/resources/x-sign.png")), i, j, 1, 1);
+                board.add(new ImageView(new Image("file:src/resources/other-x-sign.png")), i, j, 1, 1);
             }
         }
 
