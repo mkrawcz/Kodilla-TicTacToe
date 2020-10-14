@@ -5,6 +5,7 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
@@ -23,6 +24,11 @@ public class TicTacToe extends Application {
     private GridPane board = new GridPane();
     //tablica reprezentujaca uklad na planszy
     private Field[][] boardFields = new Field[3][3];
+
+    private Label lbResult;
+
+    private int playerScore = 0;
+    private int cpuScore = 0;
 
     public static void main(String[] args) {
         launch(args);
@@ -51,7 +57,12 @@ public class TicTacToe extends Application {
         mainBorderPane.setCenter(board);
 
         //todo Stworzyc przyciski / labele (np z wynikiem itd.) i dodać do HBox
-        HBox buttonsHbox = createButtonsHbox();
+        HBox buttonsHbox = createTopMenuHbox();
+
+        lbResult = new Label();
+        buttonsHbox.getChildren().add(lbResult);
+        refreshScoreLabel();
+
         mainBorderPane.setTop(buttonsHbox);
 
 
@@ -101,7 +112,7 @@ public class TicTacToe extends Application {
         return field;
     }
 
-    public HBox createButtonsHbox() {
+    public HBox createTopMenuHbox() {
         HBox hbox = new HBox();
         hbox.setPadding(new Insets(15, 12, 15, 12));
         hbox.setSpacing(10);
@@ -115,11 +126,16 @@ public class TicTacToe extends Application {
         Button buttonSave = new Button("Save");
         buttonSave.setPrefSize(100, 20);
 
+        //todo dodać przycisk reset
+        Button buttonReset = new Button("Reset");
+        buttonReset.setPrefSize(100, 20);
+
+
         buttonSave.setOnAction(e -> {
             //todo wywołaj metodę zapisująca
         });
 
-        hbox.getChildren().addAll(buttonPlay, buttonSave);
+        hbox.getChildren().addAll(buttonPlay, buttonSave, buttonReset);
 
         return hbox;
     }
@@ -129,5 +145,17 @@ public class TicTacToe extends Application {
     //todo Metoda, ktora wykona ruch komputera
 
     //todo Metoda, ktora zresetuje stan planszy
+    private void resetBoard
+
+    //Metoda odświeża label prezentujący wynik
+    private void refreshScoreLabel() {
+        String score = createScoreString();
+        lbResult.setText(score);
+    }
+
+    //todo na podstawie zmiennych playerScore i cpuScore zwróć wynik w postaci String
+    private String createScoreString() {
+        return playerScore + " : " + cpuScore;
+    }
 
 }
