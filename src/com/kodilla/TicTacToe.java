@@ -1,9 +1,9 @@
 package com.kodilla;
+
 import javafx.application.Application;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
@@ -11,6 +11,9 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+
+import java.io.*;
+import java.util.Random;
 
 
 public class TicTacToe extends Application {
@@ -29,6 +32,9 @@ public class TicTacToe extends Application {
 
     private int playerScore = 0;
     private int cpuScore = 0;
+
+    private File savedState = new File("saved.state");
+
 
     public static void main(String[] args) {
         launch(args);
@@ -104,12 +110,29 @@ public class TicTacToe extends Application {
             System.out.println("Click...");
             if (field.getImage().equals(EMPTY)) {
                 field.setImage(O_SIGN);
-                //todo Sprawdz czy gra zostala zakonczona wygrana lub remisem
-                //todo Jesli nie, to nastepuje ruch komputera i znowu sprawdzamy czy gra sie skonczyla
+                boolean isGameOver = checkGameFinished();
+                if (!isGameOver) {
+                    cpuTurn();
+                    checkGameFinished();
+                }
             }
         });
 
         return field;
+    }
+
+    private void showGameOverAlert(String winner) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+
+        if (winner.equals("draw")) {
+            alert.setHeaderText("Remis!");
+        } else {
+            alert.setHeaderText("Wygrał " + winner + "!");
+        }
+
+        alert.setContentText("Gra została zakończona");
+
+        alert.show();
     }
 
     public HBox createTopMenuHbox() {
@@ -118,34 +141,140 @@ public class TicTacToe extends Application {
         hbox.setSpacing(10);
         hbox.setStyle("-fx-background-color: #336699;");
 
-        //todo do przyciskow dodac akcje czyli np wywolanie metod https://docs.oracle.com/javafx/2/ui_controls/button.htm example 3.3
-
-        Button buttonPlay = new Button("Play");
-        buttonPlay.setPrefSize(100, 20);
+        Button buttonLoad = new Button("Load");
+        buttonLoad.setPrefSize(100, 20);
+        buttonLoad.setOnAction(e -> {
+            loadGame();
+        });
 
         Button buttonSave = new Button("Save");
         buttonSave.setPrefSize(100, 20);
-
-        //todo dodać przycisk reset
-        Button buttonReset = new Button("Reset");
-        buttonReset.setPrefSize(100, 20);
-
-
         buttonSave.setOnAction(e -> {
-            //todo wywołaj metodę zapisująca
+            saveGame();
         });
 
-        hbox.getChildren().addAll(buttonPlay, buttonSave, buttonReset);
+        Button buttonReset = new Button("Reset");
+        buttonReset.setPrefSize(100, 20);
+        buttonReset.setOnAction(e -> {
+            resetBoard();
+        });
+
+        hbox.getChildren().addAll(buttonLoad, buttonSave, buttonReset);
 
         return hbox;
     }
 
     //todo Metoda, ktora sprawdzi czy gra sie zakonczyla
+    private boolean checkGameFinished() {
+        if (checkWin(O_SIGN)) {
+            showGameOverAlert("gracz");
+            playerScore++;
+            refreshScoreLabel();
+            return true;
+        } else if (checkWin(X_SIGN)) {
+            showGameOverAlert("CPU");
+            cpuScore++;
+            refreshScoreLabel();
+            return true;
+        }
+
+        return checkDraw();
+    }
+
+    private boolean checkDraw() {
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                if (boardFields[i][j].getImage().equals(EMPTY)) {
+                    return false;
+                }
+            }
+        }
+        showGameOverAlert("draw");
+        return true;
+    }
+
+    private boolean checkWin(Image image) {
+        for (int i = 0; i < 3; i++) {
+            //poziomo
+            if (boardFields[i][0].getImage().equals(image)
+                    && boardFields[i][1].getImage().equals(image)
+                    && boardFields[i][2].getImage().equals(image)) {
+                return true;
+            }
+
+            //pionowa
+            if (boardFields[0][i].getImage().equals(image)
+                    && boardFields[1][i].getImage().equals(image)
+                    && boardFields[2][i].getImage().equals(image)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     //todo Metoda, ktora wykona ruch komputera
+    private void cpuTurn() {
+        System.out.println("Ruch przeciwnika");
 
-    //todo Metoda, ktora zresetuje stan planszy
-    private void resetBoard
+        Random random = new Random();
+
+        boolean success = false;
+
+        while (!success) {
+            int x = random.nextInt(3);
+            int y = random.nextInt(3);
+
+            if (boardFields[x][y].getImage().equals(EMPTY)) {
+                boardFields[x][y].setImage(X_SIGN);
+                success = true;
+            }
+        }
+    }
+
+
+    private void saveGame() {
+        GameState gameState = new GameState(boardFields, playerScore, cpuScore);
+
+        try {
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(savedState));
+            oos.writeObject(gameState);
+            oos.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void loadGame() {
+        GameState gameState = null;
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(savedState));
+            Object readObject = ois.readObject();
+            if (readObject instanceof GameState) {
+                gameState = (GameState) readObject;
+            }
+            ois.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
+        playerScore = gameState.getPlayerScore();
+        cpuScore = gameState.getCpuScore();
+        refreshScoreLabel();
+
+        Field[][] retrievedBoard = gameState.getBoardFields();
+
+        for (int i = 0; i < boardFields.length; i++) {
+            for (int j = 0; j < boardFields[i].length; j++) {
+                boardFields[i][j].setImage(retrievedBoard[i][j].getImage());
+            }
+        }
+    }
+
+    private void resetBoard() {
+        createBoardFields();
+        fillBoard();
+    }
 
     //Metoda odświeża label prezentujący wynik
     private void refreshScoreLabel() {
@@ -153,7 +282,6 @@ public class TicTacToe extends Application {
         lbResult.setText(score);
     }
 
-    //todo na podstawie zmiennych playerScore i cpuScore zwróć wynik w postaci String
     private String createScoreString() {
         return playerScore + " : " + cpuScore;
     }
