@@ -1,11 +1,11 @@
 package com.kodilla;
 
 import javafx.application.Application;
+import javafx.collections.FXCollections;
+import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
@@ -13,6 +13,8 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 
@@ -21,6 +23,8 @@ public class TicTacToe extends Application {
     public static final Image EMPTY = new Image("file:src/resources/empty.png");
     public static final Image X_SIGN = new Image("file:src/resources/x-sign-s.png");
     public static final Image O_SIGN = new Image("file:src/resources/o-sign-s.png");
+    private static final String EASY_MODE = "Easy";
+    private static final String HARD_MODE = "Hard";
 
     private Image imageback = new Image("file:src/resources/check-in-grid.png");
     //GridPane odpowiedzialny ze prezentacje planszy
@@ -34,6 +38,13 @@ public class TicTacToe extends Application {
     private int cpuScore = 0;
 
     private File savedState = new File("saved.state");
+    private File savedRanking = new File("saved.ranking");
+
+    ChoiceBox cb = new ChoiceBox(FXCollections.observableArrayList(
+            EASY_MODE, HARD_MODE)
+    );
+
+    private List<String> ranking;
 
 
     public static void main(String[] args) {
@@ -68,6 +79,8 @@ public class TicTacToe extends Application {
         lbResult = new Label();
         buttonsHbox.getChildren().add(lbResult);
         refreshScoreLabel();
+
+        ranking = loadRanking();
 
         mainBorderPane.setTop(buttonsHbox);
 
@@ -129,6 +142,12 @@ public class TicTacToe extends Application {
         } else {
             alert.setHeaderText("Wygrał " + winner + "!");
         }
+        alert.setOnCloseRequest(new EventHandler<DialogEvent>() {
+            @Override
+            public void handle(DialogEvent event) {
+                resetBoard();
+            }
+        });
 
         alert.setContentText("Gra została zakończona");
 
@@ -159,7 +178,33 @@ public class TicTacToe extends Application {
             resetBoard();
         });
 
-        hbox.getChildren().addAll(buttonLoad, buttonSave, buttonReset);
+        Button buttonSaveResult = new Button("Save result");
+        buttonSaveResult.setPrefSize(100, 20);
+        buttonSaveResult.setOnAction(e -> {
+            saveRanking();
+        });
+
+        Button buttonShowRanking = new Button("Results");
+        buttonShowRanking.setPrefSize(100, 20);
+        buttonShowRanking.setOnAction(e -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+
+            alert.setHeaderText("Ranking");
+
+            StringBuilder stringBuilder = new StringBuilder();
+
+            for(String el : ranking) {
+                stringBuilder.append(el);
+                stringBuilder.append("\n");
+            }
+            alert.setContentText(stringBuilder.toString());
+
+            alert.show();
+        });
+
+        cb.setValue(EASY_MODE);
+
+        hbox.getChildren().addAll(buttonLoad, buttonSave, buttonReset, buttonSaveResult, buttonShowRanking, cb);
 
         return hbox;
     }
@@ -208,6 +253,18 @@ public class TicTacToe extends Application {
                     && boardFields[2][i].getImage().equals(image)) {
                 return true;
             }
+            //przekatne
+            if (boardFields[0][0].getImage().equals(image)
+                    && boardFields[1][1].getImage().equals(image)
+                    && boardFields[2][2].getImage().equals(image)) {
+                return true;
+            }
+            if (boardFields[0][2].getImage().equals(image)
+                    && boardFields[1][1].getImage().equals(image)
+                    && boardFields[2][0].getImage().equals(image)) {
+                return true;
+            }
+
         }
         return false;
     }
@@ -216,6 +273,16 @@ public class TicTacToe extends Application {
     private void cpuTurn() {
         System.out.println("Ruch przeciwnika");
 
+        String mode = (String) cb.getValue();
+        if (mode.equals(EASY_MODE)) {
+            cpuEasyTurn();
+        } else if (mode.equals(HARD_MODE)) {
+            cpuHardTurn();
+        }
+
+    }
+
+    public void cpuEasyTurn() {
         Random random = new Random();
 
         boolean success = false;
@@ -229,6 +296,55 @@ public class TicTacToe extends Application {
                 success = true;
             }
         }
+    }
+
+    //troche trudniej byc powinno
+    public void cpuHardTurn() {
+        if (boardFields[0][0].getImage().equals(X_SIGN) && boardFields[0][1].getImage().equals(X_SIGN)
+            && boardFields[0][2].getImage().equals(EMPTY)) {
+            boardFields[0][2].setImage(X_SIGN);
+        } else if (boardFields[0][0].getImage().equals(X_SIGN) && boardFields[1][0].getImage().equals(X_SIGN)
+                && boardFields[2][0].getImage().equals(EMPTY)) {
+            boardFields[2][0].setImage(X_SIGN);
+        } else if (boardFields[0][0].getImage().equals(X_SIGN) && boardFields[1][1].getImage().equals(X_SIGN)
+                && boardFields[2][2].getImage().equals(EMPTY)) {
+            boardFields[2][2].setImage(X_SIGN);
+        } else if (boardFields[0][2].getImage().equals(X_SIGN) && boardFields[1][1].getImage().equals(X_SIGN)
+                && boardFields[2][0].getImage().equals(EMPTY)) {
+            boardFields[2][0].setImage(X_SIGN);
+        } else{
+            cpuEasyTurn();
+        }
+
+    }
+
+    private void saveRanking() {
+        String actualResult = "Gracz " + playerScore + " : " + cpuScore + " " + "CPU";
+        ranking.add(actualResult);
+
+        try {
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(savedRanking));
+            oos.writeObject(ranking);
+            oos.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private List<String> loadRanking() {
+        List<String> result = new ArrayList<>();
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(savedRanking));
+            Object readObject = ois.readObject();
+            if (readObject instanceof List) {
+                result = (List<String>) readObject;
+            }
+            ois.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return result;
     }
 
 
